@@ -1,13 +1,11 @@
 package hu.oe.bakonyi.bkk
 
-import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.SparkConf
-import org.apache.spark.streaming.{Seconds, StreamingContext}
-import org.apache.spark.streaming.kafka010._
-import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
-import org.apache.kafka.common.serialization.Deserializer
+import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
+import org.apache.spark.streaming.kafka010._
+import org.apache.spark.streaming.{Seconds, StreamingContext}
 
 //https://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html
 //https://spark.apache.org/docs/latest/streaming-programming-guide.html
@@ -20,23 +18,34 @@ object BkkDataProcesser {
     "bootstrap.servers" -> "localhost:9092",
     "key.deserializer" -> classOf[StringDeserializer],
     "value.deserializer" -> classOf[StringDeserializer],
-    "group.id" -> "use_a_separate_group_id_for_each_stream",
+    "group.id" -> "bkk-group",
     "auto.offset.reset" -> "latest",
     "enable.auto.commit" -> (false: java.lang.Boolean)
   )
+
+
 
   val topics = Array("bkk")
 
   val stream = KafkaUtils.createDirectStream(
     ssc,
     PreferConsistent,
-    Subscribe(topics, kafkaParams)
+    Subscribe[String,String](topics, kafkaParams)
   )
 
   stream.map(record => (record.key, record.value))
 
-  def main(args: Array[String]): Unit = {
+  stream.foreachRDD { rdd =>
+    val offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
+    // some time later, after outputs have completed
+    stream.asInstanceOf[CanCommitOffsets].commitAsync(offsetRanges)
+  }
 
+
+  def main(args: Array[String]): Unit = {
+    print("ASD"+System.lineSeparator())
+    ssc.start();
+    ssc.awaitTermination()
   }
 
 

@@ -1,9 +1,10 @@
 package hu.oe.bakonyi.bkk
 
-import hu.oe.bakonyi.bkk.model.BkkBusinessData
+import hu.oe.bakonyi.bkk.model.BkkBusinessDataV2
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
+import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010._
@@ -17,7 +18,7 @@ object BkkDataProcesser {
 
   val conf = new SparkConf().setMaster("local[2]").setAppName("bkk-process")
   val ssc = new StreamingContext(conf, Seconds(1))
-  //ssc.sparkContext.setLogLevel("ERROR")
+  ssc.sparkContext.setLogLevel("ERROR")
 
   val kafkaParams = Map[String, Object](
     "bootstrap.servers" -> "localhost:9092",
@@ -33,20 +34,30 @@ object BkkDataProcesser {
   val stream = KafkaUtils.createDirectStream(
     ssc,
     PreferConsistent,
-    Subscribe[String,BkkBusinessData](topics, kafkaParams)
-  )
+    Subscribe[String,BkkBusinessDataV2](topics, kafkaParams)
+  ).map(_.value)
 
-  stream.map(record => (record.key, record.value))
+  val sparkSession =  SparkSession.builder().getOrCreate()
 
-  stream.foreachRDD { rdd =>
-    //val offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
-    // some time later, after outputs have completed
-    //stream.asInstanceOf[CanCommitOffsets].commitAsync(offsetRanges)
-    rdd.foreach { data =>
-      log.info(s"Adat: ${data.topic()} @ ${data.value()} ${System.lineSeparator()}")
+  import sparkSession.implicits._
+
+  stream.foreachRDD(
+    rdd=>{
+      if (!rdd.isEmpty()) {
+
+        val bkkData: Dataset[BkkBusinessDataV2] = sparkSession.createDataset(rdd)
+        printf(s"Egy RDD groupby után: ${System.lineSeparator()}")
+        //val num = bkkData.groupByKey(
+        //  x => (x.month, x.dayOfWeek, x.lastUpdateTime, x.routeId, x.tripId)
+        //)
+
+        val aggregatedAvgData = bkkData.groupBy($"month",$"dayOfWeek",$"lastUpdateTime", $"routeId", $"tripId", $"stopId").avg()
+        //val bkkv3Data = aggregatedAvgData.map()
+        
+
+      }
     }
-  }
-
+  )
 
   def main(args: Array[String]): Unit = {
     log.info("Spark JOB for BKK "+System.lineSeparator())

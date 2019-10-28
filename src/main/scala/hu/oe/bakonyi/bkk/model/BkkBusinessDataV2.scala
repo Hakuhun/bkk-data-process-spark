@@ -23,7 +23,7 @@ case class BkkBusinessDataV3(
   month : Int,
   dayOfWeek : Int,
   //lastUpdateTime: Long,
-  routeId : String,
+  routeId : Int,
   //tripId : String,
   //stopId : String,
   //vehicleModel : String,

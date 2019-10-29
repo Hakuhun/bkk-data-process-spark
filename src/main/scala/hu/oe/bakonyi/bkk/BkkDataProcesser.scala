@@ -6,9 +6,11 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.LogisticRegression
-import org.apache.spark.ml.feature.{LabeledPoint, VectorIndexer}
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.linalg.Vectors
-import org.apache.spark.ml.{Pipeline, PipelineModel, linalg}
+import org.apache.spark.ml.regression.DecisionTreeRegressor
+import org.apache.spark.ml.{Pipeline, linalg}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.streaming.dstream.DStream
@@ -61,7 +63,6 @@ object BkkDataProcesser {
       if (!rdd.isEmpty()) {
 
         val bkkData: Dataset[BkkBusinessDataV2] = sparkSession.createDataset(rdd)
-        printf(s"Egy RDD groupby után: ${System.lineSeparator()}")
 
         val aggregatedAvgData = bkkData.groupBy($"month", $"dayOfWeek", $"lastUpdateTime", $"routeId", $"tripId", $"stopId").avg()
         val bkkv3Data: Dataset[BkkBusinessDataV3] = aggregatedAvgData
@@ -79,31 +80,65 @@ object BkkDataProcesser {
               ((row.getAs[Double]("avg(departureDiff)") + row.getAs[Double]("avg(arrivalDiff)")) / 2)
             )
           }
+
+        printf(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
+        log.info(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
+
         bkkv3Data.show(10, false)
+        //log.info(bkkv3Data.show(10, false).toString)
 
         val featureVector: Dataset[LabeledPoint] = bkkv3Data.map(x => LabeledPoint(x.value, transformVector(x)))
 
-        val featureIndexer = new VectorIndexer()
-          .setInputCol("features")
-          .setOutputCol("indexedFeatures")
-          .setMaxCategories(100)
-          .fit(featureVector)
+        printf(s"FeatureVector definition: ${System.lineSeparator()}")
+        featureVector.show(2,false)
 
-        //val dt = new DecisionTreeRegressor()          .setLabelCol("label")          .setFeaturesCol("indexedFeatures")
+        val splits: Array[Dataset[LabeledPoint]] = featureVector.randomSplit(Array(0.7, 0.3))
+        val trainingData: Dataset[LabeledPoint] = splits(0)
+        val testData: Dataset[LabeledPoint] = splits(1)
 
-        val pipeline = new Pipeline()
-        var model: PipelineModel = null
+        val dt = new DecisionTreeRegressor()
+          .setLabelCol("label")
+          .setFeaturesCol("features")
+          .setImpurity("variance")
+          .setMaxDepth(20)
+          .setMaxBins(32)
+          .setMinInstancesPerNode(5)
+
+        var pipeline = new Pipeline()
 
         try{
-          model = PipelineModel.load(modelDirectory)
-          model.transform(featureVector).show(10,false)
-        } catch {
-          case ex : InvalidInputException =>{
-            pipeline.setStages(Array(featureIndexer))
-            model = pipeline.fit(featureVector)
+          pipeline = Pipeline.read.load(pipelineDirectory)
+        }catch {
+          case iie : InvalidInputException =>{
+            pipeline.setStages(Array(dt))
+            printf(iie.getMessage)
+          }
+          case unknownError: UnknownError =>{
+            printf(unknownError.getMessage)
           }
         }
 
+        val model = pipeline.fit(trainingData)
+
+
+
+        // Make predictions.
+        val predictions = model.transform(testData)
+
+        print(s"Predictions based on ${System.currentTimeMillis()} time train: ${System.lineSeparator()}")
+        // Select example rows to display.
+        predictions.show(5, false)
+
+        // Select (prediction, true label) and compute test error
+        val evaluator = new MulticlassClassificationEvaluator()
+          .setLabelCol("label")
+          .setPredictionCol("prediction")
+          .setMetricName("accuracy")
+        val accuracy = evaluator.evaluate(predictions)
+
+        println("Test Error = " + (1.0 - accuracy))
+
+        pipeline.write.overwrite().save(pipelineDirectory)
         model.write.overwrite().save(modelDirectory)
       }
     }

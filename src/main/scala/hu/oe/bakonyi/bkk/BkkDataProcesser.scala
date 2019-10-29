@@ -1,16 +1,17 @@
 package hu.oe.bakonyi.bkk
 
 import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV3}
+import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.feature.{LabeledPoint, VectorIndexer}
-import org.apache.spark.ml.{Pipeline, linalg}
 import org.apache.spark.ml.linalg.Vectors
-import org.apache.spark.ml.regression.DecisionTreeRegressor
+import org.apache.spark.ml.{Pipeline, PipelineModel, linalg}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010._
@@ -21,11 +22,12 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 object BkkDataProcesser {
   val log : Logger = Logger.getLogger(BkkDataProcesser.getClass)
 
-  val conf = new SparkConf().setMaster("local[2]").setAppName("bkk-process")
+  val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName("bkk-process")
   val ssc = new StreamingContext(conf, Seconds(1))
   ssc.sparkContext.setLogLevel("ERROR")
 
-  val modelDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/model"
+  val pipelineDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/pipeline"
+  val modelDirectory =  "/mnt/D834B3AF34B38ECE/DEV/hadoop/model"
 
   val lr = new LogisticRegression()
     .setMaxIter(100)
@@ -44,13 +46,13 @@ object BkkDataProcesser {
 
   val topics = Array("bkk")
 
-  val stream = KafkaUtils.createDirectStream(
+  val stream: DStream[BkkBusinessDataV2] = KafkaUtils.createDirectStream(
     ssc,
     PreferConsistent,
     Subscribe[String,BkkBusinessDataV2](topics, kafkaParams)
   ).map(_.value)
 
-  val sparkSession =  SparkSession.builder().getOrCreate()
+  val sparkSession: SparkSession =  SparkSession.builder().getOrCreate()
 
   import sparkSession.implicits._
 
@@ -62,7 +64,6 @@ object BkkDataProcesser {
         printf(s"Egy RDD groupby után: ${System.lineSeparator()}")
 
         val aggregatedAvgData = bkkData.groupBy($"month", $"dayOfWeek", $"lastUpdateTime", $"routeId", $"tripId", $"stopId").avg()
-        aggregatedAvgData.show(10, false)
         val bkkv3Data: Dataset[BkkBusinessDataV3] = aggregatedAvgData
           .map {
             case row: GenericRow => BkkBusinessDataV3(
@@ -80,18 +81,6 @@ object BkkDataProcesser {
           }
         bkkv3Data.show(10, false)
 
-        /*
-        try {
-          val smodel = org.apache.spark.ml.PipelineModel.load(modelDirectory)
-          smodel.transform(bkkv3Data).write.save(modelDirectory)
-        }catch {
-          case ex : UnsupportedOperationException =>{
-            val model = lr.fit(bkkv3Data)
-            model.write.overwrite().save(modelDirectory)
-          }
-        }
-        */
-
         val featureVector: Dataset[LabeledPoint] = bkkv3Data.map(x => LabeledPoint(x.value, transformVector(x)))
 
         val featureIndexer = new VectorIndexer()
@@ -100,16 +89,22 @@ object BkkDataProcesser {
           .setMaxCategories(100)
           .fit(featureVector)
 
-        val dt = new DecisionTreeRegressor()
-          .setLabelCol("label")
-          .setFeaturesCol("indexedFeatures")
+        //val dt = new DecisionTreeRegressor()          .setLabelCol("label")          .setFeaturesCol("indexedFeatures")
 
         val pipeline = new Pipeline()
-          .setStages(Array(featureIndexer, dt))
+        var model: PipelineModel = null
 
-        val model = pipeline.fit(featureVector)
-        pipeline.save(modelDirectory)
+        try{
+          model = PipelineModel.load(modelDirectory)
+          model.transform(featureVector).show(10,false)
+        } catch {
+          case ex : InvalidInputException =>{
+            pipeline.setStages(Array(featureIndexer))
+            model = pipeline.fit(featureVector)
+          }
+        }
 
+        model.write.overwrite().save(modelDirectory)
       }
     }
   )

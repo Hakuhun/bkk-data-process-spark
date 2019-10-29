@@ -67,19 +67,8 @@ object BkkDataProcesser {
         val aggregatedAvgData = bkkData.groupBy($"month", $"dayOfWeek", $"lastUpdateTime", $"routeId", $"tripId", $"stopId").avg()
         val bkkv3Data: Dataset[BkkBusinessDataV3] = aggregatedAvgData
           .map {
-            case row: GenericRow => BkkBusinessDataV3(
-              row.getAs[Int]("month"),
-              row.getAs[Int]("dayOfWeek"),
-              row.getAs[String]("routeId").split("_")(1).toInt,
-              row.getAs[Double]("avg(temperature)"),
-              row.getAs[Double]("avg(humidity)"),
-              row.getAs[Double]("avg(pressure)"),
-              row.getAs[Double]("avg(snow)"),
-              row.getAs[Double]("avg(rain)"),
-              row.getAs[Double]("avg(visibility)"),
-              ((row.getAs[Double]("avg(departureDiff)") + row.getAs[Double]("avg(arrivalDiff)")) / 2)
-            )
-          }
+            case row: GenericRow => bkkv3Mapper(row)
+          }.filter(x=>x.value != 0)
 
         printf(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
         log.info(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
@@ -119,8 +108,6 @@ object BkkDataProcesser {
         }
 
         val model = pipeline.fit(trainingData)
-
-
 
         // Make predictions.
         val predictions = model.transform(testData)
@@ -162,6 +149,22 @@ object BkkDataProcesser {
       x.rain,
       x.snow,
       x.visibility)
+  }
+
+  def bkkv3Mapper(row:GenericRow) : BkkBusinessDataV3 ={
+    val value: Double = ((row.getAs[Double]("avg(departureDiff)") + row.getAs[Double]("avg(arrivalDiff)")) / 2)
+    BkkBusinessDataV3(
+      row.getAs[Int]("month"),
+      row.getAs[Int]("dayOfWeek"),
+      row.getAs[String]("routeId").split("_")(1).toInt,
+      row.getAs[Double]("avg(temperature)"),
+      row.getAs[Double]("avg(humidity)"),
+      row.getAs[Double]("avg(pressure)"),
+      row.getAs[Double]("avg(snow)"),
+      row.getAs[Double]("avg(rain)"),
+      row.getAs[Double]("avg(visibility)"),
+      value
+    )
   }
 
 }

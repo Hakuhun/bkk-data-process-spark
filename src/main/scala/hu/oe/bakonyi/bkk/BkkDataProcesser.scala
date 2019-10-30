@@ -1,6 +1,6 @@
 package hu.oe.bakonyi.bkk
 
-import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV3}
+import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV3, BkkBusinessDataV4}
 import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
@@ -30,6 +30,7 @@ object BkkDataProcesser {
 
   val pipelineDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/pipeline"
   val modelDirectory =  "/mnt/D834B3AF34B38ECE/DEV/hadoop/model"
+  val csvDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/bkk.csv"
 
   val lr = new LogisticRegression()
     .setMaxIter(100)
@@ -62,71 +63,91 @@ object BkkDataProcesser {
     foreachFunc = rdd => {
       if (!rdd.isEmpty()) {
 
+        print("Streaming pipeline has started.")
+
         val bkkData: Dataset[BkkBusinessDataV2] = sparkSession.createDataset(rdd)
 
-        val aggregatedAvgData = bkkData.groupBy($"month", $"dayOfWeek", $"lastUpdateTime", $"routeId", $"tripId", $"stopId").avg()
-        val bkkv3Data: Dataset[BkkBusinessDataV3] = aggregatedAvgData
+        val aggregatedAvgData = bkkData.groupBy($"month", $"dayOfWeek", $"lastUpdateTime", $"routeId", $"tripId", $"stopId")
+          .agg(
+            Map(
+              "temperature" ->"avg",
+              "humidity" -> "avg",
+              "pressure" -> "avg",
+              "snow" -> "avg",
+              "rain" -> "avg",
+              "visibility" -> "avg",
+              "arrivalDiff" -> "sum",
+              "departureDiff" -> "sum",
+              "value" -> "avg"
+            )
+          )
+
+        val bkkv3Data: Dataset[BkkBusinessDataV4] = aggregatedAvgData
           .map {
-            case row: GenericRow => bkkv3Mapper(row)
-          }.filter(x=>x.value != 0)
+            case row: GenericRow => bkkv4Mapper(row)
+          }.filter(x=>x.value > 0 && x.value < 1500000)
 
         printf(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
         log.info(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
 
         bkkv3Data.show(10, false)
-        //log.info(bkkv3Data.show(10, false).toString)
 
         val featureVector: Dataset[LabeledPoint] = bkkv3Data.map(x => LabeledPoint(x.value, transformVector(x)))
 
         printf(s"FeatureVector definition: ${System.lineSeparator()}")
         featureVector.show(2,false)
 
-        val splits: Array[Dataset[LabeledPoint]] = featureVector.randomSplit(Array(0.7, 0.3))
-        val trainingData: Dataset[LabeledPoint] = splits(0)
-        val testData: Dataset[LabeledPoint] = splits(1)
+        if(featureVector.count() > 0) {
 
-        val dt = new DecisionTreeRegressor()
-          .setLabelCol("label")
-          .setFeaturesCol("features")
-          .setImpurity("variance")
-          .setMaxDepth(20)
-          .setMaxBins(32)
-          .setMinInstancesPerNode(5)
+          val splits: Array[Dataset[LabeledPoint]] = featureVector.randomSplit(Array(0.7, 0.3))
+          val trainingData: Dataset[LabeledPoint] = splits(0)
+          val testData: Dataset[LabeledPoint] = splits(1)
 
-        var pipeline = new Pipeline()
+          val dt = new DecisionTreeRegressor()
+            .setLabelCol("label")
+            .setFeaturesCol("features")
+            .setImpurity("variance")
+            .setMaxDepth(30)
+            .setMaxBins(32)
+            .setMinInstancesPerNode(5)
 
-        try{
-          pipeline = Pipeline.read.load(pipelineDirectory)
-        }catch {
-          case iie : InvalidInputException =>{
-            pipeline.setStages(Array(dt))
-            printf(iie.getMessage)
+          var pipeline = new Pipeline()
+
+          try {
+            pipeline = Pipeline.read.load(pipelineDirectory)
+          } catch {
+            case iie: InvalidInputException => {
+              pipeline.setStages(Array(dt))
+              printf(iie.getMessage)
+            }
+            case unknownError: UnknownError => {
+              printf(unknownError.getMessage)
+            }
           }
-          case unknownError: UnknownError =>{
-            printf(unknownError.getMessage)
-          }
+
+          val model = pipeline.fit(trainingData)
+
+          // Make predictions.
+          val predictions = model.transform(testData)
+
+          print(s"Predictions based on ${System.currentTimeMillis()} time train: ${System.lineSeparator()}")
+          // Select example rows to display.
+          predictions.show(50, false)
+
+          // Select (prediction, true label) and compute test error
+          val evaluator = new MulticlassClassificationEvaluator()
+            .setLabelCol("label")
+            .setPredictionCol("prediction")
+            .setMetricName("accuracy")
+          val accuracy = evaluator.evaluate(predictions)
+
+          println("Test Error = " + (1.0 - accuracy))
+
+          pipeline.write.overwrite().save(pipelineDirectory)
+          model.write.overwrite().save(modelDirectory)
+        }else{
+          print("No fitable values left after aggregating and preprocessing.")
         }
-
-        val model = pipeline.fit(trainingData)
-
-        // Make predictions.
-        val predictions = model.transform(testData)
-
-        print(s"Predictions based on ${System.currentTimeMillis()} time train: ${System.lineSeparator()}")
-        // Select example rows to display.
-        predictions.show(5, false)
-
-        // Select (prediction, true label) and compute test error
-        val evaluator = new MulticlassClassificationEvaluator()
-          .setLabelCol("label")
-          .setPredictionCol("prediction")
-          .setMetricName("accuracy")
-        val accuracy = evaluator.evaluate(predictions)
-
-        println("Test Error = " + (1.0 - accuracy))
-
-        pipeline.write.overwrite().save(pipelineDirectory)
-        model.write.overwrite().save(modelDirectory)
       }
     }
   )
@@ -137,9 +158,10 @@ object BkkDataProcesser {
     ssc.awaitTermination()
   }
 
-  def transformVector(x:BkkBusinessDataV3) : linalg.Vector  = {
+  def transformVector(x:BkkBusinessDataV4) : linalg.Vector  = {
     Vectors.dense(
       x.routeId,
+      x.stopId,
       x.month,
       x.dayOfWeek,
       x.temperature,
@@ -152,11 +174,34 @@ object BkkDataProcesser {
   }
 
   def bkkv3Mapper(row:GenericRow) : BkkBusinessDataV3 ={
-    val value: Double = ((row.getAs[Double]("avg(departureDiff)") + row.getAs[Double]("avg(arrivalDiff)")) / 2)
+    val arrivalDiff = row.getAs[Double]("sum(arrivalDiff)")
+    val departureDiff =row.getAs[Double]("sum(departureDiff)")
+    val value: Double = ((arrivalDiff + departureDiff)) / 2
     BkkBusinessDataV3(
       row.getAs[Int]("month"),
       row.getAs[Int]("dayOfWeek"),
       row.getAs[String]("routeId").split("_")(1).toInt,
+      row.getAs[Double]("avg(temperature)"),
+      row.getAs[Double]("avg(humidity)"),
+      row.getAs[Double]("avg(pressure)"),
+      row.getAs[Double]("avg(snow)"),
+      row.getAs[Double]("avg(rain)"),
+      row.getAs[Double]("avg(visibility)"),
+      value
+    )
+  }
+
+  def bkkv4Mapper(row:GenericRow) : BkkBusinessDataV4 ={
+    val arrivalDiff = row.getAs[Double]("sum(arrivalDiff)")
+    val departureDiff =row.getAs[Double]("sum(departureDiff)")
+    val value: Double = ((arrivalDiff + departureDiff)) / 2
+    var stopId = row.getAs[String]("stopId").split("_")(1)
+    stopId = stopId.substring(1, stopId.length)
+    BkkBusinessDataV4(
+      row.getAs[Int]("month"),
+      row.getAs[Int]("dayOfWeek"),
+      row.getAs[String]("routeId").split("_")(1).toInt,
+      stopId.toInt,
       row.getAs[Double]("avg(temperature)"),
       row.getAs[Double]("avg(humidity)"),
       row.getAs[Double]("avg(pressure)"),

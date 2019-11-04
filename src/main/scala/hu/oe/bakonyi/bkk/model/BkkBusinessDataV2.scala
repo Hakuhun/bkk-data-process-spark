@@ -16,6 +16,7 @@ case class BkkBusinessDataV2(
   visibility : Double,
   departureDiff : Double,
   arrivalDiff: Double,
+  alert: Byte,
   value : Double,
 )
 
@@ -35,6 +36,7 @@ case class BkkBusinessDataV3(
   visibility : Double,
   //departureDiff : Double,
   //arrivalDiff: Double,
+  alert: Byte,
   value : Double,
 )
 
@@ -54,5 +56,6 @@ case class BkkBusinessDataV4(
                               visibility : Double,
                               //departureDiff : Double,
                               //arrivalDiff: Double,
+                              alert: Byte,
                               value : Double,
                             )

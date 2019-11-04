@@ -78,6 +78,7 @@ object BkkDataProcesser {
               "visibility" -> "avg",
               "arrivalDiff" -> "sum",
               "departureDiff" -> "sum",
+              "alert" -> "max",
               "value" -> "avg"
             )
           )
@@ -187,6 +188,7 @@ object BkkDataProcesser {
       row.getAs[Double]("avg(snow)"),
       row.getAs[Double]("avg(rain)"),
       row.getAs[Double]("avg(visibility)"),
+      row.getAs[Byte]("max(alert"),
       value
     )
   }
@@ -208,6 +210,7 @@ object BkkDataProcesser {
       row.getAs[Double]("avg(snow)"),
       row.getAs[Double]("avg(rain)"),
       row.getAs[Double]("avg(visibility)"),
+      row.getAs[Byte]("max(alert)"),
       value
     )
   }

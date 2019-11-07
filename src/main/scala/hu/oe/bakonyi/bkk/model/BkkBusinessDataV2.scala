@@ -3,6 +3,7 @@ package hu.oe.bakonyi.bkk.model
 case class BkkBusinessDataV2(
   month : Int,
   dayOfWeek : Int,
+  hour:Int,
   lastUpdateTime: Long,
   routeId : String,
   tripId : String,
@@ -23,6 +24,7 @@ case class BkkBusinessDataV2(
 case class BkkBusinessDataV3(
   month : Int,
   dayOfWeek : Int,
+  hour:Int,
   //lastUpdateTime: Long,
   routeId : Int,
   //tripId : String,
@@ -43,6 +45,7 @@ case class BkkBusinessDataV3(
 case class BkkBusinessDataV4(
                               month : Int,
                               dayOfWeek : Int,
+                              hour:Int,
                               //lastUpdateTime: Long,
                               routeId : Int,
                               //tripId : String,

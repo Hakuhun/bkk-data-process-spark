@@ -1,23 +1,30 @@
 package hu.oe.bakonyi.bkk
 
-import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV3, BkkBusinessDataV4}
+import java.io.File
+
+import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV4}
+import ml.combust.bundle.BundleFile
+import ml.combust.mleap.spark.SparkSupport._
+import org.apache.commons.io.FileUtils
 import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
+import org.apache.spark.ml.bundle.SparkBundleContext
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.regression.DecisionTreeRegressor
-import org.apache.spark.ml.{Pipeline, linalg}
+import org.apache.spark.ml.{Pipeline, PipelineModel, linalg}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010._
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+import resource._
 
 //https://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html
 //https://spark.apache.org/docs/latest/streaming-programming-guide.html
@@ -31,6 +38,8 @@ object BkkDataProcesser {
   val pipelineDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/pipeline"
   val modelDirectory =  "/mnt/D834B3AF34B38ECE/DEV/hadoop/model"
   val csvDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/bkk.csv"
+  val zipPrefix = "jar:file:"
+  val mleapPath = "/mnt/D834B3AF34B38ECE/DEV/hadoop//bkk-base-pipeline.zip"
 
   val lr = new LogisticRegression()
     .setMaxIter(100)
@@ -63,11 +72,11 @@ object BkkDataProcesser {
     foreachFunc = rdd => {
       if (!rdd.isEmpty()) {
 
-        print("Streaming pipeline has started.")
+        printf("Streaming pipeline has started.")
 
         val bkkData: Dataset[BkkBusinessDataV2] = sparkSession.createDataset(rdd)
 
-        val aggregatedAvgData = bkkData.groupBy($"month", $"dayOfWeek", $"lastUpdateTime", $"routeId", $"tripId", $"stopId")
+        val aggregatedAvgData = bkkData.groupBy($"month", $"dayOfWeek", $"lastUpdateTime", $"routeId", $"tripId", $"stopId", $"hour")
           .agg(
             Map(
               "temperature" ->"avg",
@@ -126,10 +135,13 @@ object BkkDataProcesser {
             }
           }
 
-          val model = pipeline.fit(trainingData)
+          val model: PipelineModel = pipeline.fit(trainingData)
 
           // Make predictions.
-          val predictions = model.transform(testData)
+          val predictions: DataFrame = model.transform(testData)
+
+          //Exporting Spark pipeline to a non-spark context needed model
+          exportToMlLean(model, predictions, mleapPath)
 
           print(s"Predictions based on ${System.currentTimeMillis()} time train: ${System.lineSeparator()}")
           // Select example rows to display.
@@ -153,6 +165,19 @@ object BkkDataProcesser {
     }
   )
 
+  def exportToMlLean(model: PipelineModel, predictions : DataFrame,  path : String) : Unit ={
+    var fileToSave : File = new File(path)
+
+    if(fileToSave.exists()){
+      FileUtils.forceDelete(new File(path))
+    }
+
+    val sbc = SparkBundleContext().withDataset(predictions)
+    for(bf <- managed(BundleFile(zipPrefix+path))) {
+      model.writeBundle.save(bf)(sbc).get
+    }
+  }
+
   def main(args: Array[String]): Unit = {
     log.info("Spark JOB for BKK "+System.lineSeparator())
     ssc.start()
@@ -174,6 +199,7 @@ object BkkDataProcesser {
       x.visibility)
   }
 
+  /*
   def bkkv3Mapper(row:GenericRow) : BkkBusinessDataV3 ={
     val arrivalDiff = row.getAs[Double]("sum(arrivalDiff)")
     val departureDiff =row.getAs[Double]("sum(departureDiff)")
@@ -191,7 +217,7 @@ object BkkDataProcesser {
       row.getAs[Byte]("max(alert"),
       value
     )
-  }
+  }*/
 
   def bkkv4Mapper(row:GenericRow) : BkkBusinessDataV4 ={
     val arrivalDiff = row.getAs[Double]("sum(arrivalDiff)")
@@ -202,6 +228,7 @@ object BkkDataProcesser {
     BkkBusinessDataV4(
       row.getAs[Int]("month"),
       row.getAs[Int]("dayOfWeek"),
+      row.getAs[Int]("hour"),
       row.getAs[String]("routeId").split("_")(1).toInt,
       stopId.toInt,
       row.getAs[Double]("avg(temperature)"),

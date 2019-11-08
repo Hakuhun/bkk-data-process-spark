@@ -127,6 +127,7 @@ object BkkDataProcesser {
             pipeline = Pipeline.read.load(pipelineDirectory)
           } catch {
             case iie: InvalidInputException => {
+              //pipeline.setStages(Array(dt))
               pipeline.setStages(Array(dt))
               printf(iie.getMessage)
             }
@@ -139,9 +140,6 @@ object BkkDataProcesser {
 
           // Make predictions.
           val predictions: DataFrame = model.transform(testData)
-
-          //Exporting Spark pipeline to a non-spark context needed model
-          exportToMlLean(model, predictions, mleapPath)
 
           print(s"Predictions based on ${System.currentTimeMillis()} time train: ${System.lineSeparator()}")
           // Select example rows to display.
@@ -158,6 +156,7 @@ object BkkDataProcesser {
 
           pipeline.write.overwrite().save(pipelineDirectory)
           model.write.overwrite().save(modelDirectory)
+          exportToMlLean(model,predictions,mleapPath)
         }else{
           print("No fitable values left after aggregating and preprocessing.")
         }
@@ -190,34 +189,14 @@ object BkkDataProcesser {
       x.stopId,
       x.month,
       x.dayOfWeek,
+      x.hour,
       x.temperature,
       x.humidity,
-      x.rain,
       x.pressure,
       x.rain,
       x.snow,
       x.visibility)
   }
-
-  /*
-  def bkkv3Mapper(row:GenericRow) : BkkBusinessDataV3 ={
-    val arrivalDiff = row.getAs[Double]("sum(arrivalDiff)")
-    val departureDiff =row.getAs[Double]("sum(departureDiff)")
-    val value: Double = ((arrivalDiff + departureDiff)) / 2
-    BkkBusinessDataV3(
-      row.getAs[Int]("month"),
-      row.getAs[Int]("dayOfWeek"),
-      row.getAs[String]("routeId").split("_")(1).toInt,
-      row.getAs[Double]("avg(temperature)"),
-      row.getAs[Double]("avg(humidity)"),
-      row.getAs[Double]("avg(pressure)"),
-      row.getAs[Double]("avg(snow)"),
-      row.getAs[Double]("avg(rain)"),
-      row.getAs[Double]("avg(visibility)"),
-      row.getAs[Byte]("max(alert"),
-      value
-    )
-  }*/
 
   def bkkv4Mapper(row:GenericRow) : BkkBusinessDataV4 ={
     val arrivalDiff = row.getAs[Double]("sum(arrivalDiff)")

@@ -61,4 +61,25 @@ case class BkkBusinessDataV4(
                               //arrivalDiff: Double,
                               alert: Byte,
                               value : Double,
+              )
+
+case class BkkBusinessDataV5(
+                              month : Int,
+                              dayOfWeek : Int,
+                              hour:Int,
+                              //lastUpdateTime: Long,
+                              routeId : Int,
+                              //tripId : String,
+                              stopId : Int,
+                              //vehicleModel : String,
+                              temperature : Double,
+                              humidity: Double,
+                              pressure : Double,
+                              snow : Double,
+                              rain : Double,
+                              visibility : Double,
+                              //departureDiff : Double,
+                              //arrivalDiff: Double,
+                              alert: Byte,
+                              label : Double,
                             )

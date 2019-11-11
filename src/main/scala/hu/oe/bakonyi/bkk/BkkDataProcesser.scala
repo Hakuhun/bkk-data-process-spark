@@ -1,23 +1,22 @@
 package hu.oe.bakonyi.bkk
 
-import java.io.File
+import java.io.{File, FileOutputStream}
 
 import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV4}
 import javax.xml.transform.stream.StreamResult
 import ml.combust.bundle.BundleFile
+import ml.combust.bundle.serializer.SerializationFormat
 import ml.combust.mleap.spark.SparkSupport._
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
-import org.apache.spark.ml.bundle.SparkBundleContext
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature.LabeledPoint
-import org.apache.spark.ml.linalg.Vectors
+import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.regression.DecisionTreeRegressor
-import org.apache.spark.ml.{Pipeline, PipelineModel, linalg}
+import org.apache.spark.ml.{Pipeline, PipelineModel}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
@@ -43,7 +42,12 @@ object BkkDataProcesser {
   val modelDirectory =  "/mnt/D834B3AF34B38ECE/DEV/hadoop/model"
   val csvDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/bkk.csv"
   val zipPrefix = "jar:file:"
-  val mleapPath = "/mnt/D834B3AF34B38ECE/DEV/hadoop//bkk-base-pipeline.zip"
+  val mleapPath = "/mnt/D834B3AF34B38ECE/DEV/bkk-containers/bkk-mleap-api/model/bkk-base-pipeline.zip"
+  val pmmlPath = "/mnt/D834B3AF34B38ECE/DEV/hadoop/basicmodel.pmml"
+
+  var model : PipelineModel = _
+  var newModel : PipelineModel = _
+  var pipeline : Pipeline = _
 
   val lr = new LogisticRegression()
     .setMaxIter(100)
@@ -106,33 +110,34 @@ object BkkDataProcesser {
 
         bkkv3Data.show(10, false)
 
-        val featureVector: Dataset[LabeledPoint] = bkkv3Data.map(x => LabeledPoint(x.value, transformVector(x)))
+        if(bkkv3Data.count() > 0) {
 
-        printf(s"FeatureVector definition: ${System.lineSeparator()}")
-        featureVector.show(2,false)
+          //val splits: Array[Dataset[LabeledPoint]] = featureVector.randomSplit(Array(0.7, 0.3))
+          val splits = bkkv3Data.randomSplit(Array(0.7, 0.3))
 
-        if(featureVector.count() > 0) {
+          val trainingData = splits(0)
+          val testData = splits(1)
 
-          val splits: Array[Dataset[LabeledPoint]] = featureVector.randomSplit(Array(0.7, 0.3))
-          val trainingData: Dataset[LabeledPoint] = splits(0)
-          val testData: Dataset[LabeledPoint] = splits(1)
+          val assembler = new VectorAssembler()
+            .setInputCols(Array("routeId", "stopId", "month","dayOfWeek","hour","temperature","humidity","pressure","rain","snow","visibility"))
+            .setOutputCol("features")
 
           val dt = new DecisionTreeRegressor()
-            .setLabelCol("label")
+            .setLabelCol("value")
             .setFeaturesCol("features")
             .setImpurity("variance")
             .setMaxDepth(30)
             .setMaxBins(32)
             .setMinInstancesPerNode(5)
 
-          var pipeline = new Pipeline()
+          pipeline = new Pipeline()
 
           try {
-            pipeline = Pipeline.read.load(pipelineDirectory)
+            model = PipelineModel.load(modelDirectory)
+            pipeline.setStages(model.stages)
           } catch {
             case iie: InvalidInputException => {
-              //pipeline.setStages(Array(dt))
-              pipeline.setStages(Array(dt))
+              pipeline.setStages(Array(assembler,dt))
               printf(iie.getMessage)
             }
             case unknownError: UnknownError => {
@@ -140,38 +145,34 @@ object BkkDataProcesser {
             }
           }
 
-          val model: PipelineModel = pipeline.fit(trainingData)
+          newModel = pipeline.fit(trainingData)
 
           // Make predictions.
           val predictions: DataFrame = model.transform(testData)
 
-          print(s"Predictions based on ${System.currentTimeMillis()} time train: ${System.lineSeparator()}")
           // Select example rows to display.
-          predictions.show(50, false)
+          println(s"Predictions based on ${System.currentTimeMillis()} time train: ")
+          predictions.show(10, false)
 
           // Select (prediction, true label) and compute test error
           val evaluator = new MulticlassClassificationEvaluator()
-            .setLabelCol("label")
+            .setLabelCol("value")
             .setPredictionCol("prediction")
             .setMetricName("accuracy")
           val accuracy = evaluator.evaluate(predictions)
 
           println("Test Error = " + (1.0 - accuracy))
 
-          pipeline.write.overwrite().save(pipelineDirectory)
-          model.write.overwrite().save(modelDirectory)
-          exportToMlLean(model,predictions,mleapPath)
-
+          //pipeline.write.overwrite().save(pipelineDirectory)
+          newModel.write.overwrite().save(modelDirectory)
 
           var schema: StructType = trainingData.schema
 
-          var pmml = new PMMLBuilder(schema, model)
-          JAXBUtil.marshalPMML(pmml.build(), new StreamResult(System.out))
+          var pmml = new PMMLBuilder(schema, newModel)
+          JAXBUtil.marshalPMML(pmml.build(), new StreamResult(new FileOutputStream(pmmlPath)))
 
-          //import org.jpmml.sparkml.PMMLBuilder
-          //val pmmlBytes = new PMMLBuilder(schema, model).buildByteArray()
         }else{
-          print("No fitable values left after aggregating and preprocessing.")
+          println("No fitable values left after aggregating and preprocessing.")
         }
       }
     }
@@ -184,9 +185,8 @@ object BkkDataProcesser {
       FileUtils.forceDelete(new File(path))
     }
 
-    val sbc = SparkBundleContext().withDataset(predictions)
     for(bf <- managed(BundleFile(zipPrefix+path))) {
-      model.writeBundle.save(bf)(sbc).get
+      model.writeBundle.format(SerializationFormat.Json).save(bf)
     }
   }
 
@@ -194,21 +194,6 @@ object BkkDataProcesser {
     log.info("Spark JOB for BKK "+System.lineSeparator())
     ssc.start()
     ssc.awaitTermination()
-  }
-
-  def transformVector(x:BkkBusinessDataV4) : linalg.Vector  = {
-    Vectors.dense(
-      x.routeId,
-      x.stopId,
-      x.month,
-      x.dayOfWeek,
-      x.hour,
-      x.temperature,
-      x.humidity,
-      x.pressure,
-      x.rain,
-      x.snow,
-      x.visibility)
   }
 
   def bkkv4Mapper(row:GenericRow) : BkkBusinessDataV4 ={

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<module external.linked.project.id="bkk-data-process-spark [file:/D:/privdev/bkk-data-process-spark/]" external.linked.project.path="$MODULE_DIR$/../.." external.root.project.path="$MODULE_DIR$/../.." external.system.id="SBT" type="JAVA_MODULE" version="4">
+<module external.linked.project.id="bkk-data-process-spark [file:/mnt/D834B3AF34B38ECE/DEV/bkk-data-process-spark/]" external.linked.project.path="$MODULE_DIR$/../.." external.root.project.path="$MODULE_DIR$/../.." external.system.id="SBT" type="JAVA_MODULE" version="4">
   <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
     <output url="file://$MODULE_DIR$/../../target/scala-2.12/classes" />
     <output-test url="file://$MODULE_DIR$/../../target/scala-2.12/test-classes" />
@@ -12,34 +12,19 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="sbt: org.scala-lang:scala-library:2.12.10:jar" level="project" />
-    <orderEntry type="library" name="sbt: org.jpmml:pmml-model-metro:1.4.13:jar" level="project" />
-    <orderEntry type="library" name="sbt: org.jpmml:pmml-model:1.4.13:jar" level="project" />
-    <orderEntry type="library" name="sbt: org.jpmml:pmml-agent:1.4.13:jar" level="project" />
-    <orderEntry type="library" name="sbt: org.jpmml:jpmml-sparkml:1.5.4:jar" level="project" />
-    <orderEntry type="library" name="sbt: org.jpmml:jpmml-converter:1.3.9:jar" level="project" />
-    <orderEntry type="library" name="sbt: org.glassfish.jaxb:jaxb-runtime:2.3.2:jar" level="project" />
-    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-tensor_2.12:0.15.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.google.guava:guava:16.0.1:jar" level="project" />
     <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-spark_2.12:0.15.0:jar" level="project" />
     <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-spark-base_2.12:0.15.0:jar" level="project" />
-    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-runtime_2.12:0.15.0:jar" level="project" />
-    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-core_2.12:0.15.0:jar" level="project" />
-    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-base_2.12:0.15.0:jar" level="project" />
-    <orderEntry type="library" name="sbt: ml.combust.bundle:bundle-ml_2.12:0.15.0:jar" level="project" />
     <orderEntry type="library" name="sbt: ml.combust.bundle:bundle-hdfs_2.12:0.15.0:jar" level="project" />
-    <orderEntry type="library" name="sbt: jakarta.xml.bind:jakarta.xml.bind-api:2.3.2:jar" level="project" />
-    <orderEntry type="library" name="sbt: jakarta.activation:jakarta.activation-api:1.2.1:jar" level="project" />
     <orderEntry type="library" name="sbt: io.spray:spray-json_2.12:1.3.2:jar" level="project" />
-    <orderEntry type="library" name="sbt: commons-io:commons-io:2.5:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe:config:1.3.0:jar" level="project" />
     <orderEntry type="library" name="sbt: com.thesamet.scalapb:scalapb-runtime_2.12:0.7.1:jar" level="project" />
     <orderEntry type="library" name="sbt: com.thesamet.scalapb:lenses_2.12:0.7.0-test2:jar" level="project" />
-    <orderEntry type="library" name="sbt: com.sun.istack:istack-commons-runtime:3.0.8:jar" level="project" />
     <orderEntry type="library" name="sbt: com.lihaoyi:sourcecode_2.12:0.1.4:jar" level="project" />
     <orderEntry type="library" name="sbt: com.lihaoyi:fastparse_2.12:1.0.0:jar" level="project" />
     <orderEntry type="library" name="sbt: com.lihaoyi:fastparse-utils_2.12:1.0.0:jar" level="project" />
     <orderEntry type="library" name="sbt: com.jsuereth:scala-arm_2.12:2.0:jar" level="project" />
     <orderEntry type="library" name="sbt: com.google.protobuf:protobuf-java:3.5.1:jar" level="project" />
-    <orderEntry type="library" name="sbt: com.beust:jcommander:1.72:jar" level="project" />
     <orderEntry type="library" name="sbt: org.typelevel:macro-compat_2.12:1.1.1:jar" level="project" />
     <orderEntry type="library" name="sbt: org.typelevel:machinist_2.12:0.6.1:jar" level="project" />
     <orderEntry type="library" name="sbt: org.spire-math:spire_2.12:0.13.0:jar" level="project" />
@@ -89,7 +74,6 @@
     <orderEntry type="library" name="sbt: com.fasterxml.jackson.module:jackson-module-scala_2.12:2.6.7.1:jar" level="project" />
     <orderEntry type="library" name="sbt: com.github.luben:zstd-jni:1.3.2-2:jar" level="project" />
     <orderEntry type="library" name="sbt: com.google.code.gson:gson:2.2.4:jar" level="project" />
-    <orderEntry type="library" name="sbt: com.google.guava:guava:16.0.1:jar" level="project" />
     <orderEntry type="library" name="sbt: com.google.inject:guice:3.0:jar" level="project" />
     <orderEntry type="library" name="sbt: com.ning:compress-lzf:1.0.3:jar" level="project" />
     <orderEntry type="library" name="sbt: com.thoughtworks.paranamer:paranamer:2.8:jar" level="project" />
@@ -212,8 +196,6 @@
           <root url="jar://$USER_HOME$/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/avro/avro-mapred/1.8.2/avro-mapred-1.8.2-javadoc.jar!/" />
           <root url="jar://$USER_HOME$/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-core/1.5.5/orc-core-1.5.5-javadoc.jar!/" />
           <root url="jar://$USER_HOME$/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-mapreduce/1.5.5/orc-mapreduce-1.5.5-javadoc.jar!/" />
-          <root url="jar://$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-core/1.5.5/orc-core-1.5.5-javadoc.jar!/" />
-          <root url="jar://$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-mapreduce/1.5.5/orc-mapreduce-1.5.5-javadoc.jar!/" />
         </JAVADOC>
         <SOURCES>
           <root url="jar://$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/avro/avro-mapred/1.8.2/avro-mapred-1.8.2-sources.jar!/" />
@@ -221,8 +203,6 @@
           <root url="jar://$USER_HOME$/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/avro/avro-mapred/1.8.2/avro-mapred-1.8.2-sources.jar!/" />
           <root url="jar://$USER_HOME$/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-core/1.5.5/orc-core-1.5.5-sources.jar!/" />
           <root url="jar://$USER_HOME$/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-mapreduce/1.5.5/orc-mapreduce-1.5.5-sources.jar!/" />
-          <root url="jar://$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-core/1.5.5/orc-core-1.5.5-sources.jar!/" />
-          <root url="jar://$USER_HOME$/AppData/Local/Coursier/cache/v1/https/repo1.maven.org/maven2/org/apache/orc/orc-mapreduce/1.5.5/orc-mapreduce-1.5.5-sources.jar!/" />
         </SOURCES>
       </library>
     </orderEntry>
@@ -234,5 +214,21 @@
     <orderEntry type="library" name="sbt: com.google.code.findbugs:jsr305:3.0.2:jar" level="project" />
     <orderEntry type="library" name="sbt: commons-codec:commons-codec:1.10:jar" level="project" />
     <orderEntry type="library" name="sbt: org.apache.spark:spark-sql-kafka-0-10_2.12:2.4.4:jar" level="project" />
+    <orderEntry type="library" name="sbt: commons-io:commons-io:2.5:jar" level="project" />
+    <orderEntry type="library" name="sbt: ml.combust.bundle:bundle-ml_2.12:0.15.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-base_2.12:0.15.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-core_2.12:0.15.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-runtime_2.12:0.15.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: ml.combust.mleap:mleap-tensor_2.12:0.15.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.beust:jcommander:1.72:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.sun.istack:istack-commons-runtime:3.0.8:jar" level="project" />
+    <orderEntry type="library" name="sbt: jakarta.activation:jakarta.activation-api:1.2.1:jar" level="project" />
+    <orderEntry type="library" name="sbt: jakarta.xml.bind:jakarta.xml.bind-api:2.3.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.glassfish.jaxb:jaxb-runtime:2.3.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.jpmml:jpmml-converter:1.3.9:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.jpmml:jpmml-sparkml:1.5.4:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.jpmml:pmml-agent:1.4.13:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.jpmml:pmml-model:1.4.13:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.jpmml:pmml-model-metro:1.4.13:jar" level="project" />
   </component>
 </module>

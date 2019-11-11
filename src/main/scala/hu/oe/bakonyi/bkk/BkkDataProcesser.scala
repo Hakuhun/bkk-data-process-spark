@@ -167,6 +167,9 @@ object BkkDataProcesser {
 
           var pmml = new PMMLBuilder(schema, model)
           JAXBUtil.marshalPMML(pmml.build(), new StreamResult(System.out))
+
+          //import org.jpmml.sparkml.PMMLBuilder
+          //val pmmlBytes = new PMMLBuilder(schema, model).buildByteArray()
         }else{
           print("No fitable values left after aggregating and preprocessing.")
         }

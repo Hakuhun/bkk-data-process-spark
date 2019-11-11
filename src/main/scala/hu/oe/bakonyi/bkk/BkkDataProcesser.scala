@@ -3,6 +3,7 @@ package hu.oe.bakonyi.bkk
 import java.io.File
 
 import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV4}
+import javax.xml.transform.stream.StreamResult
 import ml.combust.bundle.BundleFile
 import ml.combust.mleap.spark.SparkSupport._
 import org.apache.commons.io.FileUtils
@@ -18,12 +19,15 @@ import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.regression.DecisionTreeRegressor
 import org.apache.spark.ml.{Pipeline, PipelineModel, linalg}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010._
 import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.jpmml.model.JAXBUtil
+import org.jpmml.sparkml.PMMLBuilder
 import resource._
 
 //https://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html
@@ -157,6 +161,12 @@ object BkkDataProcesser {
           pipeline.write.overwrite().save(pipelineDirectory)
           model.write.overwrite().save(modelDirectory)
           exportToMlLean(model,predictions,mleapPath)
+
+
+          var schema: StructType = trainingData.schema
+
+          var pmml = new PMMLBuilder(schema, model)
+          JAXBUtil.marshalPMML(pmml.build(), new StreamResult(System.out))
         }else{
           print("No fitable values left after aggregating and preprocessing.")
         }

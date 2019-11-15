@@ -60,7 +60,7 @@ case class BkkBusinessDataV4(
                               //departureDiff : Double,
                               //arrivalDiff: Double,
                               alert: Byte,
-                              value : Double,
+                              label : Double,
               )
 
 case class BkkBusinessDataV5(

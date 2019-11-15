@@ -1,13 +1,10 @@
 package hu.oe.bakonyi.bkk
 
-import java.io.{File, FileOutputStream}
+import java.io.FileOutputStream
 
 import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV4}
 import javax.xml.transform.stream.StreamResult
-import ml.combust.bundle.BundleFile
-import ml.combust.bundle.serializer.SerializationFormat
 import ml.combust.mleap.spark.SparkSupport._
-import org.apache.commons.io.FileUtils
 import org.apache.hadoop.mapred.InvalidInputException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
@@ -103,7 +100,7 @@ object BkkDataProcesser {
         val bkkv3Data: Dataset[BkkBusinessDataV4] = aggregatedAvgData
           .map {
             case row: GenericRow => bkkv4Mapper(row)
-          }.filter(x=>x.value > 0 && x.value < 1500000)
+          }.filter(x=>x.label > 0 && x.label < 1500000)
 
         printf(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
         log.info(s"RDD data after aggregating and grouping: ${System.lineSeparator()}")
@@ -111,8 +108,6 @@ object BkkDataProcesser {
         bkkv3Data.show(10, false)
 
         if(bkkv3Data.count() > 0) {
-
-          //val splits: Array[Dataset[LabeledPoint]] = featureVector.randomSplit(Array(0.7, 0.3))
           val splits = bkkv3Data.randomSplit(Array(0.7, 0.3))
 
           val trainingData = splits(0)
@@ -123,7 +118,7 @@ object BkkDataProcesser {
             .setOutputCol("features")
 
           val dt = new DecisionTreeRegressor()
-            .setLabelCol("value")
+            .setLabelCol("label")
             .setFeaturesCol("features")
             .setImpurity("variance")
             .setMaxDepth(30)
@@ -148,7 +143,7 @@ object BkkDataProcesser {
           newModel = pipeline.fit(trainingData)
 
           // Make predictions.
-          val predictions: DataFrame = model.transform(testData)
+          val predictions: DataFrame = newModel.transform(testData)
 
           // Select example rows to display.
           println(s"Predictions based on ${System.currentTimeMillis()} time train: ")
@@ -156,14 +151,14 @@ object BkkDataProcesser {
 
           // Select (prediction, true label) and compute test error
           val evaluator = new MulticlassClassificationEvaluator()
-            .setLabelCol("value")
+            .setLabelCol("label")
             .setPredictionCol("prediction")
             .setMetricName("accuracy")
           val accuracy = evaluator.evaluate(predictions)
 
           println("Test Error = " + (1.0 - accuracy))
 
-          //pipeline.write.overwrite().save(pipelineDirectory)
+          pipeline.write.overwrite().save(pipelineDirectory)
           newModel.write.overwrite().save(modelDirectory)
 
           var schema: StructType = trainingData.schema
@@ -177,18 +172,6 @@ object BkkDataProcesser {
       }
     }
   )
-
-  def exportToMlLean(model: PipelineModel, predictions : DataFrame,  path : String) : Unit ={
-    var fileToSave : File = new File(path)
-
-    if(fileToSave.exists()){
-      FileUtils.forceDelete(new File(path))
-    }
-
-    for(bf <- managed(BundleFile(zipPrefix+path))) {
-      model.writeBundle.format(SerializationFormat.Json).save(bf)
-    }
-  }
 
   def main(args: Array[String]): Unit = {
     log.info("Spark JOB for BKK "+System.lineSeparator())

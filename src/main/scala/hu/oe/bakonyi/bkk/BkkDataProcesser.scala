@@ -49,8 +49,8 @@ object BkkDataProcesser {
   //val pipelineDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/pipeline"
   val pipelineDirectory = "D:\\pipeline"
   val modelDirectory =  "D:\\DEV\\nodel"
+  val pmmlPath =  "D:\\DEV\\pmml\\basicmodell.pmml"
   val csvDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/bkk.csv"
-  val pmmlPath = "/mnt/D834B3AF34B38ECE/DEV/hadoop/basicmodel.pmml"
 
   var model : PipelineModel = _
   var newModel : PipelineModel = _

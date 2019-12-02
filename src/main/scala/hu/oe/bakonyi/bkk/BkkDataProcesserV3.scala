@@ -2,6 +2,8 @@ package hu.oe.bakonyi.bkk
 
 
 import com.google.gson.Gson
+import hu.oe.bakonyi.bkk.BkkDataProcesser.transformVector
+import hu.oe.bakonyi.bkk.BkkDataProcesserV3.sparkSession
 import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV4}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.VectorAssembler
@@ -11,19 +13,16 @@ import org.apache.spark.ml.{Pipeline, PipelineModel, linalg}
 import org.apache.spark.mllib
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.sql.execution.streaming.Sink
 import org.apache.spark.sql.sources.StreamSinkProvider
 import org.apache.spark.sql.streaming.OutputMode
-import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SQLContext, SparkSession}
 
-object BkkDataProcesserV3 {
-  /*
-  val log : Logger = Logger.getLogger(BkkDataProcesser.getClass)
-  val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName("bkk-process")
-  conf.set("spark.driver.allowMultipleContexts", "true")
-  val ssc = new StreamingContext(conf, Seconds(1))
-  ssc.sparkContext.setLogLevel("ERROR")
-*/
+object BkkDataProcesserV3 extends Serializable {
+
+  System.setProperty("spark.driver.allowMultipleContexts", "true")
+
   val pipelineDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/pipeline"
   val modelDirectory =  "/mnt/D834B3AF34B38ECE/DEV/hadoop/model"
   val csvDirectory = "/mnt/D834B3AF34B38ECE/DEV/hadoop/bkk.csv"
@@ -175,19 +174,17 @@ object BkkDataProcesserV3 {
           "value" -> "avg"
         ))
 
-    val bkkv4Data = aggregatedRoutes.map(x =>{
+    val bkkv4Data: Dataset[BkkBusinessDataV4] = aggregatedRoutes.map(x =>{
       bkkv4Mapper(x)
     }).filter(x=> x.label > 0 && x.label < 1500000)
 
-    val Array(train, test) = bkkv4Data.randomSplit(weights=Array(.8, .2))
 
+    BkkKafkaSender.sendKAfkaStuff(bkkv4Data)
 
     val query = bkkv4Data.writeStream
-      .outputMode("complete")
+      .outputMode(OutputMode.Complete())
       .format("console")
       .start()
-
-    val model= pipeline.fit(train)
 
     query.awaitTermination()
   }
@@ -215,4 +212,13 @@ object BkkDataProcesserV3 {
     )
   }
 
+}
+
+object BkkKafkaSender extends Serializable{
+  import sparkSession.implicits._
+
+  def sendKAfkaStuff(bkkv4Data : Dataset[BkkBusinessDataV4]): Unit ={
+    val learningKafkaDf = bkkv4Data.map(x => LabeledPoint(x.label, transformVector(x))).map(x => new Gson().toJson(x)).alias("value")
+    learningKafkaDf.writeStream.format("kafka").outputMode(OutputMode.Complete()).option("checkpointLocation","C:\\Spark\\").option("kafka.bootstrap.servers","localhost:9092").option("topic","BKKLearningTopic").start()
+   }
 }

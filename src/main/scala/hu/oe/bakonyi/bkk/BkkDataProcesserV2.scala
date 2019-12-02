@@ -1,16 +1,15 @@
 package hu.oe.bakonyi.bkk
 
-import java.io.File
-
+import hu.oe.bakonyi.bkk.BkkDataProcesser.ssc
+import hu.oe.bakonyi.bkk.BkkDataProcesserV2.longTermModel
 import hu.oe.bakonyi.bkk.model.{BkkBusinessDataV2, BkkBusinessDataV4, MLReadyBkkModel}
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.log4j.Logger
-import org.apache.spark.SparkConf
-import org.apache.spark.ml.{Pipeline, PipelineModel}
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.{LabeledPoint, StreamingLinearRegressionWithSGD}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.GenericRow
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
@@ -20,47 +19,56 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 //https://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html
 //https://spark.apache.org/docs/latest/streaming-programming-guide.html
 object BkkDataProcesserV2 {
+  System.setProperty("spark.driver.allowMultipleContexts", "true")
   val log : Logger = Logger.getLogger(BkkDataProcesser.getClass)
 
-  val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName("bkk-process")
-  val ssc = new StreamingContext(conf, Seconds(1))
-  ssc.sparkContext.setLogLevel("ERROR")
+  val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName("bkk-learning")
+  val ssc2 = new StreamingContext(SparkContext.getOrCreate(),Seconds(1))
+  ssc2.sparkContext.setLogLevel("ERROR")
+  ssc2.checkpoint("D:\\Spark\\ml")
 
-  val pmmlPath = "/mnt/D834B3AF34B38ECE/DEV/hadoop/basicmodel.pmml"
+  val pmmlPath = "D:\\DEV\\pmml\\streamingModel.pmml"
 
   val kafkaParams = Map[String, Object](
     "bootstrap.servers" -> "localhost:9092",
     "key.deserializer" -> classOf[StringDeserializer],
-    "value.deserializer" -> classOf[BkkDataDeserializer],
-    "group.id" -> "bkk",
+    "value.deserializer" -> classOf[MlReadyBkkModelDeserializator],
+    "group.id" -> "BKKLearningTopic",
     "auto.offset.reset" -> "latest",
     "enable.auto.commit" -> (false: java.lang.Boolean)
   )
 
-  val topics = Array("refinedBKK")
+  val topics = Array("BKKLearningTopic")
 
-  val stream: DStream[MLReadyBkkModel] = KafkaUtils.createDirectStream(
-    ssc,
-    PreferConsistent,
-    Subscribe[String,MLReadyBkkModel](topics, kafkaParams)
-  ).map(_.value)
+  var longTermModel = new StreamingLinearRegressionWithSGD()
+  longTermModel.setInitialWeights(Vectors.zeros(9))
 
-  val sparkSession: SparkSession =  SparkSession.builder().getOrCreate()
+  /*
+  learningModelStream.foreachRDD(
+    rdd =>{
+      rdd.foreach(x=>println(s"Feature: ${x.features} @ ${x.label}"))
+    }
+  )
+   */
 
-  val trainingData = stream.map(x => LabeledPoint(x.label, x.features.features))
+  def main(args: Array[String]): Unit = {
+    println("Continuous learning has started")
+    val learningModelStream: DStream[LabeledPoint] = KafkaUtils.createDirectStream(
+      ssc2,
+      PreferConsistent,
+      Subscribe[String,LabeledPoint](topics, kafkaParams)
+    ).map(_.value)
 
-  val numFeatures = 11
-  val model2 = new StreamingLinearRegressionWithSGD()
-      .setStepSize(0.5)
-      .setNumIterations(10)
-      .setInitialWeights(Vectors.zeros(11))
-      .trainOn(trainingData)
+    longTermModel.trainOn(learningModelStream)
+    println(s"Learning has been completed")
+    println(s"Saving the model")
+    longTermModel.latestModel().toPMML(pmmlPath)
+    println(s"Model was saved to ${pmmlPath}")
+    ssc2.start()
+    ssc2.awaitTermination()
+  }
 
-  
-
-  ssc.start()
-  ssc.awaitTermination()
-
+  /*
   def bkkv4Mapper(row:GenericRow) : BkkBusinessDataV4 ={
     val arrivalDiff = row.getAs[Double]("sum(arrivalDiff)")
     val departureDiff =row.getAs[Double]("sum(departureDiff)")
@@ -106,5 +114,6 @@ object BkkDataProcesserV2 {
       value
     )
   }
+ */
 
 }

@@ -16,5 +16,4 @@ libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "2.6.0"
 resolvers += "sxfcode Bintray Repo" at "https://dl.bintray.com/sfxcode/maven/"
 
 libraryDependencies += "com.sfxcode.nosql" %% "simple-mongo" % "1.6.5"
-// https://mvnrepository.com/artifact/databricks/spark-deep-learning
-libraryDependencies += "databricks" % "spark-deep-learning" % "1.5.0-spark2.4-s_2.11"
+

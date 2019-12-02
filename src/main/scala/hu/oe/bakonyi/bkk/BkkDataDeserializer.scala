@@ -62,7 +62,10 @@ class MlReadyBkkModelDeserializator extends Deserializer[LabeledPoint]{
   override def deserialize(topic: String, data: Array[Byte]): LabeledPoint = {
     val stringValue = stringDeserialiser.deserialize(topic, data)
     val json = new Gson().fromJson(stringValue, classOf[MLReadyBkkModel])
-    LabeledPoint(json.label,json.features.features)
+
+    val features = org.apache.spark.mllib.linalg.Vectors.dense(json.features.values)
+
+    LabeledPoint(json.label,features)
   }
 
   override def close(): Unit = {

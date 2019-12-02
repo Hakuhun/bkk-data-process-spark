@@ -7,7 +7,7 @@ case class BkkData(location: Location, routeId:String, tripId:String, veichleId:
 case class BasicWeatherModel(temperature:Double, feelsLikeTemperature:Double, humidity:Double, pressure:Double, rainIntensity:Double, snowIntensity:Double, visibility:Integer, location: Location)
 case class BkkBusinessData(location: Location, bkk:BkkData, weather: BasicWeatherModel, currentTime:Long, month:Integer, dayOfTheWeek: Integer)
 
-case class Features(features: mllib.linalg.Vector)
+case class  Features(values: Array[Double])
 
 case class MLReadyBkkModel(
                           label:Double,

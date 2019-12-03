@@ -1,4 +1,4 @@
 [debug] "not up to date. inChanged = true, force = false
-[debug] Updating ProjectRef(uri("file:/D:/privdev/bkk-data-process-spark/"), "bkk-data-process-spark")...
-[debug] Done updating ProjectRef(uri("file:/D:/privdev/bkk-data-process-spark/"), "bkk-data-process-spark")
+[debug] Updating ProjectRef(uri("file:/D:/DEV/bkk-data-process-spark/"), "bkk-data-process-spark")...
+[debug] Done updating ProjectRef(uri("file:/D:/DEV/bkk-data-process-spark/"), "bkk-data-process-spark")
 [warn] There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings.

@@ -2,11 +2,12 @@
 [debug] Updating ...
 [warn] 
 [warn] 	Note: Unresolved dependencies path:
-[error] sbt.librarymanagement.ResolveException: Error downloading huawei-noah:streamDM:0.0.1
+[error] sbt.librarymanagement.ResolveException: Error downloading databricks:spark-deep-learning:1.5.0-spark2.4-s_2.11
 [error]   Not found
 [error]   Not found
-[error]   not found: /home/bakonyi/.ivy2/local/huawei-noah/streamDM/0.0.1/ivys/ivy.xml
-[error]   not found: https://repo1.maven.org/maven2/huawei-noah/streamDM/0.0.1/streamDM-0.0.1.pom
+[error]   not found: C:\Users\hakuh\.ivy2\local\databricks\spark-deep-learning\1.5.0-spark2.4-s_2.11\ivys\ivy.xml
+[error]   not found: https://repo1.maven.org/maven2/databricks/spark-deep-learning/1.5.0-spark2.4-s_2.11/spark-deep-learning-1.5.0-spark2.4-s_2.11.pom
+[error]   not found: https://dl.bintray.com/sfxcode/maven/databricks/spark-deep-learning/1.5.0-spark2.4-s_2.11/spark-deep-learning-1.5.0-spark2.4-s_2.11.pom
 [error] 	at lmcoursier.CoursierDependencyResolution.unresolvedWarningOrThrow(CoursierDependencyResolution.scala:245)
 [error] 	at lmcoursier.CoursierDependencyResolution.$anonfun$update$34(CoursierDependencyResolution.scala:214)
 [error] 	at scala.util.Either$LeftProjection.map(Either.scala:573)
@@ -37,8 +38,9 @@
 [error] 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
 [error] 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
 [error] 	at java.lang.Thread.run(Thread.java:748)
-[error] (update) sbt.librarymanagement.ResolveException: Error downloading huawei-noah:streamDM:0.0.1
+[error] (update) sbt.librarymanagement.ResolveException: Error downloading databricks:spark-deep-learning:1.5.0-spark2.4-s_2.11
 [error]   Not found
 [error]   Not found
-[error]   not found: /home/bakonyi/.ivy2/local/huawei-noah/streamDM/0.0.1/ivys/ivy.xml
-[error]   not found: https://repo1.maven.org/maven2/huawei-noah/streamDM/0.0.1/streamDM-0.0.1.pom
+[error]   not found: C:\Users\hakuh\.ivy2\local\databricks\spark-deep-learning\1.5.0-spark2.4-s_2.11\ivys\ivy.xml
+[error]   not found: https://repo1.maven.org/maven2/databricks/spark-deep-learning/1.5.0-spark2.4-s_2.11/spark-deep-learning-1.5.0-spark2.4-s_2.11.pom
+[error]   not found: https://dl.bintray.com/sfxcode/maven/databricks/spark-deep-learning/1.5.0-spark2.4-s_2.11/spark-deep-learning-1.5.0-spark2.4-s_2.11.pom

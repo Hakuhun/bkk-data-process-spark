@@ -9,6 +9,5 @@ libraryDependencies += "org.apache.spark" %% "spark-streaming-kafka-0-10" % "2.4
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.4.4"
 libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "2.4.4"
 libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.4.4"
-libraryDependencies += "ml.combust.mleap" %% "mleap-runtime" % "0.15.0"
-libraryDependencies += "ml.combust.mleap" %% "mleap-spark" % "0.15.0"
-libraryDependencies += "org.jpmml" % "jpmml-sparkml" % "1.5.4" exclude("com.google.guava", "guava")
+
+

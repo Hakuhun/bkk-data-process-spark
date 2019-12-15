@@ -10,10 +10,4 @@ libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.4.4"
 libraryDependencies += "org.apache.spark" %% "spark-sql-kafka-0-10" % "2.4.4"
 libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.4.4"
 
-libraryDependencies += "org.jpmml" % "jpmml-sparkml" % "1.5.4" exclude("com.google.guava", "guava")
-libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "2.6.0"
-
-resolvers += "sxfcode Bintray Repo" at "https://dl.bintray.com/sfxcode/maven/"
-
-libraryDependencies += "com.sfxcode.nosql" %% "simple-mongo" % "1.6.5"
 

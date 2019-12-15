@@ -9,7 +9,7 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.json4s.jackson.Serialization
 import org.json4s.{Formats, NoTypeHints}
 
-class BkkDataDeserializer extends Deserializer[BkkBusinessDataV2]{
+class BkkDataDeserializer extends Deserializer[BkkBusinessDataV2] {
 
   implicit val formats: Formats = Serialization.formats(NoTypeHints)
 
@@ -29,7 +29,7 @@ class BkkDataDeserializer extends Deserializer[BkkBusinessDataV2]{
   }
 }
 
-class RefinedBkkDeserializer extends Serializer[BkkBusinessDataV4]{
+class RefinedBkkDeserializer extends Serializer[BkkBusinessDataV4] {
 
   implicit val formats: Formats = Serialization.formats(NoTypeHints)
 
@@ -38,18 +38,19 @@ class RefinedBkkDeserializer extends Serializer[BkkBusinessDataV4]{
   override def configure(map: util.Map[String, _], b: Boolean): Unit = {
     stringDeserialiser.configure(map, b)
   }
+
   override def close(): Unit = {
     stringDeserialiser.close()
   }
 
   override def serialize(topic: String, data: BkkBusinessDataV4): Array[Byte] = {
-    var line =""
+    var line = ""
     line = new Gson().toJson(data)
     line.getBytes("UTF-8")
   }
 }
 
-class MlReadyBkkModelDeserializator extends Deserializer[LabeledPoint]{
+class MlReadyBkkModelDeserializator extends Deserializer[LabeledPoint] {
 
   implicit val formats: Formats = Serialization.formats(NoTypeHints)
 
@@ -65,7 +66,7 @@ class MlReadyBkkModelDeserializator extends Deserializer[LabeledPoint]{
 
     val features = org.apache.spark.mllib.linalg.Vectors.dense(json.features.values)
 
-    LabeledPoint(json.label,features)
+    LabeledPoint(json.label, features)
   }
 
   override def close(): Unit = {

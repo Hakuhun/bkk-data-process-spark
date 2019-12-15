@@ -13,14 +13,14 @@ import org.apache.spark.{SparkConf, SparkContext}
 
 object BkkDataProcesserV2 {
   System.setProperty("spark.driver.allowMultipleContexts", "true")
-  val log : Logger = Logger.getLogger(BkkDataProcesser.getClass)
+  val log: Logger = Logger.getLogger(BkkDataProcesser.getClass)
 
   val pmmlPath = "D:\\DEV\\pmml\\streamingModel.pmml"
   val pmmlDir = "D:\\DEV\\pmml\\"
 
   def main(args: Array[String]): Unit = {
     val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName("bkk-learning")
-    val ssc2 = new StreamingContext(SparkContext.getOrCreate(),Seconds(1))
+    val ssc2 = new StreamingContext(SparkContext.getOrCreate(), Seconds(1))
     ssc2.sparkContext.setLogLevel("ERROR")
     ssc2.checkpoint("D:\\Spark\\ml")
 
@@ -36,7 +36,7 @@ object BkkDataProcesserV2 {
     val learningModelStream: DStream[LabeledPoint] = KafkaUtils.createDirectStream(
       ssc2,
       PreferConsistent,
-      Subscribe[String,LabeledPoint](topics, kafkaParams)
+      Subscribe[String, LabeledPoint](topics, kafkaParams)
     ).map(_.value).cache()
 
     val trainingData = learningModelStream.transform(rdd => rdd.randomSplit(Array(0.7, 0.3))(0))
@@ -45,16 +45,16 @@ object BkkDataProcesserV2 {
     val longTermModel = new StreamingLinearRegressionWithSGD()
       .setInitialWeights(Vectors.zeros(9))
       .setNumIterations(1)
-      .setStepSize(0.0001)
+      .setStepSize(0.01)
 
     println("Continuous learning has started")
 
     longTermModel.trainOn(trainingData)
 
     longTermModel.predictOnValues(testingData.map(v => (v.label, v.features))).foreachRDD(
-      rdd =>{
-        if(!rdd.isEmpty()){
-          rdd.foreach(point =>{
+      rdd => {
+        if (!rdd.isEmpty()) {
+          rdd.foreach(point => {
             println(s"Real: ${point._1} @ Predicted: ${point._2}")
           })
           println("MSE: %f".format(rdd.map(v => math.pow((v._1 - v._2), 2)).mean()))
